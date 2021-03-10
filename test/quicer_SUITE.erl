@@ -159,7 +159,7 @@ tc_conn_basic(Config)->
     listener_ready ->
       {ok, Conn} = quicer:connect("localhost", Port, [], 5000),
       {ok, {Ip, _Port}} = quicer:sockname(Conn),
-      ?assert(Ip =:= {127,0,0,1} orelse Ip =:= {0,0,0,0,0,0,0,1}),
+      ?assertEqual(Ip,{127,0,0,1}),
       ok = quicer:close_connection(Conn),
       SPid ! done
   after 1000 ->
