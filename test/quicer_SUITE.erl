@@ -51,6 +51,7 @@
 
 %% -include_lib("proper/include/proper.hrl").
 -include_lib("common_test/include/ct.hrl").
+-include_lib("stdlib/include/assert.hrl").
 
 -define(PROPTEST(M,F), true = proper:quickcheck(M:F())).
 
@@ -157,7 +158,8 @@ tc_conn_basic(Config)->
   receive
     listener_ready ->
       {ok, Conn} = quicer:connect("localhost", Port, [], 5000),
-      {ok, {_, _}} = quicer:sockname(Conn),
+      {ok, {Ip, _Port}} = quicer:sockname(Conn),
+      ?assert(Ip =:= {127,0,0,1} orelse Ip =:= {0,0,0,0,0,0,0,1}),
       ok = quicer:close_connection(Conn),
       SPid ! done
   after 1000 ->
