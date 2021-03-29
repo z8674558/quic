@@ -94,7 +94,6 @@ groups() ->
 %%% Overall setup/teardown
 %%%===================================================================
 init_per_suite(Config) ->
-  application:ensure_all_started(quicer),
   Config.
 
 end_per_suite(_Config) ->
@@ -119,13 +118,17 @@ end_per_group(_Groupname, _Config) ->
 %%% Testcase specific setup/teardown
 %%%===================================================================
 init_per_testcase(_TestCase, Config) ->
+  application:ensure_all_started(quicer),
   Config.
 
 end_per_testcase(tc_lib_registration, _Config) ->
+  application:stop(quicer),
   quicer_nif:reg_open();
 end_per_testcase(tc_lib_re_registration, _Config) ->
+  application:stop(quicer),
   quicer_nif:reg_open();
 end_per_testcase(_TestCase, _Config) ->
+  application:stop(quicer),
   ok.
 
 %%%===================================================================
@@ -156,7 +159,9 @@ tc_lib_re_registration(_Config) ->
 
 tc_open_listener(Config) ->
   Port = 4567,
+  ct:pal("aaaaaaaaa"),
   {ok, L} = quicer:listen(Port, default_listen_opts(Config)),
+  ct:pal("aaaaaaaaa"),
   {ok, {_, _}} = quicer:sockname(L),
   {error,eaddrinuse} = gen_udp:open(Port),
   ok = quicer:close_listener(L),
