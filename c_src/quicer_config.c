@@ -16,8 +16,6 @@ limitations under the License.
 
 #include "quicer_config.h"
 
-const uint64_t IdleTimeoutMs = 5000;
-
 bool
 ReloadCertConfig(HQUIC Configuration, QUIC_CREDENTIAL_CONFIG_HELPER *Config)
 {
@@ -96,7 +94,7 @@ ServerLoadConfiguration(ErlNifEnv *env,
   //
   // Configures the server's idle timeout.
   //
-  Settings.IdleTimeoutMs = IdleTimeoutMs;
+  Settings.IdleTimeoutMs = 5000;
   Settings.IsSet.IdleTimeoutMs = TRUE;
   //
   // Configures the server's resumption level to allow for resumption and
@@ -587,7 +585,6 @@ setopt3(ErlNifEnv *env, __unused_parm__ int argc,
   uint32_t Param = -1;
   QUIC_PARAM_LEVEL Level = -1;
   uint32_t BufferLength = 0;
-  bool isLevelOK = false;
 
   void *q_ctx;
   void *Buffer = NULL;
@@ -625,12 +622,8 @@ setopt3(ErlNifEnv *env, __unused_parm__ int argc,
           Level = QUIC_PARAM_LEVEL_CONNECTION;
           Handle = ((QuicerStreamCTX *)q_ctx)->c_ctx->Connection;
         }
-      isLevelOK = Level == QUIC_PARAM_LEVEL_CONNECTION;
       Param = QUIC_PARAM_CONN_SETTINGS;
-      QUIC_SETTINGS Settings;
-      Buffer = &Settings;
-      BufferLength = sizeof(QUIC_SETTINGS);
-      MsQuic->GetParam(Handle, Level, Param, &BufferLength, Buffer);
+      QUIC_SETTINGS Settings = {0};
       if (!enif_is_map(env, evalue))
         {
           return ERROR_TUPLE_2(ATOM_BADARG);
@@ -639,26 +632,42 @@ setopt3(ErlNifEnv *env, __unused_parm__ int argc,
       if (get_uint64_from_map(env, evalue, ATOM_QUIC_SETTINGS_IdleTimeoutMs, &IdleTimeoutMs))
       {
         Settings.IdleTimeoutMs = IdleTimeoutMs;
+	Settings.IsSet.IdleTimeoutMs = TRUE;
       }
+      printf("yohoyoho %ld\n", sizeof(Settings));
+      BufferLength = sizeof(Settings);
+      Buffer = &Settings;
+	      printf("unused %d %p\n", BufferLength, Buffer);
+	      QUIC_STATUS Status;	
+      uint32_t Try = 0;
+
+    do {
+        //
+        // Forcing a key update is only allowed when the handshake is confirmed.
+        // So, even if the caller waits for connection complete, it's possible
+        // the call can fail with QUIC_STATUS_INVALID_STATE. To get around this
+        // we allow for a couple retries (with some sleeps).
+        //
+        if (Try != 0) {
+            CxPlatSleep(100);
+        }
+        Status =
+            MsQuic->SetParam(
+                Handle,
+                Level,
+		Param,
+                sizeof(Settings),
+                &Settings);
+	printf("statata %d\n %d\n", Status, QUIC_STATUS_INVALID_PARAMETER);
+
+    } while (QUIC_FAILED(Status) && ++Try <= 10);	      
     }
   else
     {
       return ERROR_TUPLE_2(ATOM_PARM_ERROR);
     }
 
-  if (!isLevelOK)
-    {
-      return ERROR_TUPLE_2(ATOM_BADARG);
-    }
 
-  // precheck before calling msquic api
-  if (BufferLength == 0 || Param < 0 || Level < 0)
-    {
-      return ERROR_TUPLE_2(ATOM_ERROR_INTERNAL_ERROR);
-    }
-  if (QUIC_FAILED(MsQuic->SetParam(Handle, Level, Param, BufferLength, Buffer)))
-  {
-    return ERROR_TUPLE_2(ATOM_ERROR_INTERNAL_ERROR);
-  }
+
   return ATOM_OK;
 }

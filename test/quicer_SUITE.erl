@@ -357,21 +357,20 @@ tc_getopt(Config) ->
 
 tc_setopt(Config) ->
   Parm = param_conn_settings,
-  Port = 4570,
+  Port = 4590,
   Owner = self(),
   {SPid, _Ref} = spawn_monitor(fun() -> echo_server(Owner, Config, Port) end),
   receive
     listener_ready ->
-      {ok, Conn} = quicer:connect("localhost", Port, default_conn_opts(), 5000),
-      ok = quicer:setopt(Conn, Parm, #{idle_timeout_ms => 1111}),
-      timer:sleep(100),
+      {ok, Conn} = quicer:connect("localhost", Port, [{alpn, ["sample"]},{idle_timeout_ms, 4800},{peer_unidi_stream_count, 10},{peer_bidi_stream_count, 10}], 5000),
+      ok = quicer:setopt(Conn, Parm, #{idle_timeout_ms => 11111}),
+
       {ok, Settings0} = quicer:getopt(Conn, param_conn_settings, false),
-      1111 = proplists:get_value(idle_timeout_ms, Settings0),
+      11111 = proplists:get_value(idle_timeout_ms, Settings0),
       {ok, Stm} = quicer:start_stream(Conn, []),
-      timer:sleep(100),
-      ok = quicer:setopt(Stm, Parm, [{idle_timeout_ms, 2222}]),
+      ok = quicer:setopt(Stm, Parm, [{idle_timeout_ms, 22222}]),
       {ok, Settings1} = quicer:getopt(Conn, param_conn_settings, false),
-      2222 = proplists:get_value(idle_timeout_ms, Settings1),
+      22222 = proplists:get_value(idle_timeout_ms, Settings1),
       ok = quicer:close_connection(Conn),
       SPid ! done
   after 5000 ->
