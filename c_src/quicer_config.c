@@ -653,7 +653,17 @@ setopt3(ErlNifEnv *env, __unused_parm__ int argc,
         return ERROR_TUPLE_2(ATOM_BADARG);
       }
 
-      return set_settings(env, &Handle, &evalue);
+      QUIC_SETTINGS Settings = create_settings(env, &evalue);
+
+      if (QUIC_FAILED(MsQuic->SetParam(Handle,
+                                       QUIC_PARAM_LEVEL_CONNECTION,
+                                       QUIC_PARAM_CONN_SETTINGS,
+                                       sizeof(Settings),
+                                       &Settings)))
+        {
+          return ERROR_TUPLE_2(ATOM_ERROR_INTERNAL_ERROR);
+        }
+      return ATOM_OK;
     }
   else
     { //@todo support more param
@@ -662,16 +672,11 @@ setopt3(ErlNifEnv *env, __unused_parm__ int argc,
 }
 
 
-ERL_NIF_TERM set_settings(ErlNifEnv *env, HQUIC* Handle, ERL_NIF_TERM* emap)
+QUIC_SETTINGS create_settings(ErlNifEnv *env, ERL_NIF_TERM* emap)
 {
   QUIC_SETTINGS Settings = {0};
 
-  if (!enif_is_map(env, *emap))
-    {
-      return ERROR_TUPLE_2(ATOM_BADARG);
-    }
-
-  if (get_uint64_from_map(env, *emap, ATOM_QUIC_SETTINGS_MaxBytesPerKey, &(Settings.MaxBytesPerKey)))
+  if (get_uint64_from_map(env, *emap, ATOM_QUIC_SETTINGS_MaxBytesPerKey, &Settings.MaxBytesPerKey))
     {
       Settings.IsSet.MaxBytesPerKey = TRUE;
     }
@@ -794,13 +799,6 @@ ERL_NIF_TERM set_settings(ErlNifEnv *env, HQUIC* Handle, ERL_NIF_TERM* emap)
       Settings.IsSet.ServerResumptionLevel = TRUE;
     }
 
-  if (QUIC_FAILED(MsQuic->SetParam(*Handle,
-                                   QUIC_PARAM_LEVEL_CONNECTION,
-                                   QUIC_PARAM_CONN_SETTINGS,
-                                   sizeof(Settings),
-                                   &Settings)))
-    {
-      return ERROR_TUPLE_2(ATOM_ERROR_INTERNAL_ERROR);
-    }
-  return ATOM_OK;
+  return Settings;
+
 }
