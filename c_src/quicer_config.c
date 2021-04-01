@@ -90,25 +90,7 @@ ServerLoadConfiguration(ErlNifEnv *env,
                         HQUIC *Configuration,
                         QUIC_CREDENTIAL_CONFIG_HELPER *Config)
 {
-  QUIC_SETTINGS Settings = { 0 };
-  //
-  // Configures the server's idle timeout.
-  //
-  Settings.IdleTimeoutMs = 5000;
-  Settings.IsSet.IdleTimeoutMs = TRUE;
-  //
-  // Configures the server's resumption level to allow for resumption and
-  // 0-RTT.
-  //
-  Settings.ServerResumptionLevel = QUIC_SERVER_RESUME_AND_ZERORTT;
-  Settings.IsSet.ServerResumptionLevel = TRUE;
-  //
-  // Configures the server's settings to allow for the peer to open a single
-  // bidirectional stream. By default connections are not configured to allow
-  // any streams from the peer.
-  //
-  Settings.PeerBidiStreamCount = 10;
-  Settings.IsSet.PeerBidiStreamCount = TRUE;
+  QUIC_SETTINGS Settings = create_settings(env, option);
 
   unsigned alpn_buffer_length = 0;
   QUIC_BUFFER alpn_buffers[MAX_ALPN];
@@ -148,27 +130,8 @@ ClientLoadConfiguration(ErlNifEnv *env,
                         HQUIC *Configuration,
                         bool Unsecure)
 {
-  QUIC_SETTINGS Settings = { 0 };
-  //
-  // Configures the client's idle timeout.
-  //
+  QUIC_SETTINGS Settings = create_settings(env, option);
 
-  uint64_t IdleTimeoutMs = 0;
-  uint16_t PeerUnidiStreamCount = 0;
-  uint16_t PeerBidiStreamCount = 0;
-  if (!get_uint64_from_map(env, *option, ATOM_QUIC_SETTINGS_IdleTimeoutMs, &IdleTimeoutMs) ||
-      !get_uint16_from_map(env, *option, ATOM_QUIC_SETTINGS_PeerUnidiStreamCount, &PeerUnidiStreamCount) ||
-      !get_uint16_from_map(env, *option, ATOM_QUIC_SETTINGS_PeerBidiStreamCount, &PeerBidiStreamCount))
-    {
-      return false;
-    }
-
-  Settings.IdleTimeoutMs = IdleTimeoutMs;
-  Settings.IsSet.IdleTimeoutMs = TRUE;
-  Settings.PeerUnidiStreamCount = PeerUnidiStreamCount;
-  Settings.IsSet.PeerUnidiStreamCount = TRUE;
-  Settings.PeerBidiStreamCount = PeerBidiStreamCount;
-  Settings.IsSet.PeerBidiStreamCount = TRUE;
   //
   // Configures a default client configuration, optionally disabling
   // server certificate validation.
@@ -672,7 +635,7 @@ setopt3(ErlNifEnv *env, __unused_parm__ int argc,
 }
 
 
-QUIC_SETTINGS create_settings(ErlNifEnv *env, ERL_NIF_TERM* emap)
+QUIC_SETTINGS create_settings(ErlNifEnv *env, const ERL_NIF_TERM* emap)
 {
   QUIC_SETTINGS Settings = {0};
 

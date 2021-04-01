@@ -71,6 +71,6 @@ ERL_NIF_TERM getopt3(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM setopt3(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
 QUIC_SETTINGS create_settings(ErlNifEnv *env,
-                              ERL_NIF_TERM* emap);
+                              const ERL_NIF_TERM* emap);
 
 #endif // __QUICER_CONFIG_H_
